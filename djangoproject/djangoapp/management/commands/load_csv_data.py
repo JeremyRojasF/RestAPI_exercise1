@@ -33,10 +33,10 @@ class Command(BaseCommand):
         if os.path.exists('djangoapp/logs/data_errors.log'):
             open('djangoapp/logs/data_errors.log', 'w').close()
             self.stdout.write(self.style.SUCCESS('Log file cleared'))
-
+    
     
     def load_departments(self):
-        df = pd.read_csv('data/departments.csv', header=None, names=['id', 'department'])
+        df = pd.read_csv('data/departments.csv', header=None, names=['id', 'department'], dtype={'id': int, 'department': str})
         for _, row in df.iterrows():
             serializer = DepartmentSerializer(data=row.to_dict())
             if serializer.is_valid():
@@ -46,7 +46,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Departments loaded successfully'))
 
     def load_jobs(self):
-        df = pd.read_csv('data/jobs.csv', header=None, names=['id', 'job'])
+        df = pd.read_csv('data/jobs.csv', header=None, names=['id', 'job'], dtype={'id': int, 'job': str})
         for _, row in df.iterrows():
             serializer = JobSerializer(data=row.to_dict())
             if serializer.is_valid():
@@ -56,8 +56,11 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Jobs loaded successfully'))
 
     def load_hired_employees(self):
-        df = pd.read_csv('data/hired_employees.csv', header=None, names=['id', 'name', 'datetime', 'department', 'job'])
+        df = pd.read_csv('data/hired_employees.csv', header=None, names=['id', 'name', 'datetime', 'department', 'job'], dtype={'id': pd.Int64Dtype(), 'department': pd.Int64Dtype(), 'job': pd.Int64Dtype()}, parse_dates=['datetime'])
         for _, row in df.iterrows():
+            if row.isnull().any():
+                logging.error(f"Invalid employee data: {row.to_dict()}")
+                continue
             serializer = HiredEmployeeSerializer(data=row.to_dict())
             if serializer.is_valid():
                 serializer.save()
