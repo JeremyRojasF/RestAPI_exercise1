@@ -1,7 +1,8 @@
+from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from .models import User
-from .serializers import UserSerializer
+from .serializers import UserSerializer, DepartmentSerializer, JobSerializer, HiredEmployeeSerializer
 
 
 # Create your views here.
@@ -43,3 +44,48 @@ def deleteUser(request, pk):
     user = User.objects.get(id=pk)
     user.delete()
     return Response('User deleted')
+
+@api_view(['POST'])
+def batch_insert(request):
+    departments_data = request.data.get('departments', [])
+    jobs_data = request.data.get('jobs', [])
+    employees_data = request.data.get('hired_employees', [])
+
+    errors = []
+
+    # Validar tamaño de lote (entre 1 y 1000 filas)
+    if not (1 <= len(departments_data) <= 1000 or len(departments_data) == 0):
+        return Response({'error': 'Departments batch size must be between 1 and 1000'}, status=status.HTTP_400_BAD_REQUEST)
+    if not (1 <= len(jobs_data) <= 1000 or len(jobs_data) == 0):
+        return Response({'error': 'Jobs batch size must be between 1 and 1000'}, status=status.HTTP_400_BAD_REQUEST)
+    if not (1 <= len(employees_data) <= 1000 or len(employees_data) == 0):
+        return Response({'error': 'Hired employees batch size must be between 1 and 1000'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if departments_data:
+        for data in departments_data:
+            department_serializer = DepartmentSerializer(data=data)
+            if department_serializer.is_valid():
+                department_serializer.save()
+            else:
+                errors.append({'departments': {'error': department_serializer.errors, 'data': data}})
+
+    if jobs_data:
+        for data in jobs_data:
+            job_serializer = JobSerializer(data=data)
+            if job_serializer.is_valid():
+                job_serializer.save()
+            else:
+                errors.append({'jobs': {'error': job_serializer.errors, 'data': data}})
+
+    if employees_data:
+        for data in employees_data:
+            employee_serializer = HiredEmployeeSerializer(data=data)
+            if employee_serializer.is_valid():
+                employee_serializer.save()
+            else:
+                errors.append({'hired_employees': {'error': employee_serializer.errors, 'data': data}})
+
+    if errors:
+        return Response({'errors': errors}, status=status.HTTP_207_MULTI_STATUS)
+
+    return Response({'message': 'Data inserted successfully'}, status=status.HTTP_201_CREATED)
