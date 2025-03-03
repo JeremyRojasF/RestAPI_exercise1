@@ -6,6 +6,7 @@ from djangoapp.models import Department, Job, HiredEmployee
 from .serializers import UserSerializer, DepartmentSerializer, JobSerializer, HiredEmployeeSerializer
 import pandas as pd
 import fastavro
+import os
 
 # Create your views here.
 
@@ -101,6 +102,7 @@ def backup_table(request, table_name):
         data = pd.DataFrame(list(Job.objects.values()))
     elif table_name == 'hired_employees':
         data = pd.DataFrame(list(HiredEmployee.objects.values()))
+        data.rename(columns={'department_id': 'department', 'job_id': 'job'}, inplace=True)
     else:
         return Response({'error': 'Invalid table name'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -130,3 +132,31 @@ def backup_table(request, table_name):
         fastavro.writer(f, schema, records)
 
     return Response({'message': f'Backup for {table_name} saved at {file_path}', 'schema': schema}, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+def restore_table(request, table_name):
+    file_path = f'backup/{table_name}_backup.avro'
+
+    if not os.path.exists(file_path):
+        return Response({'error': f'Backup file for {table_name} not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    with open(file_path, 'rb') as f:
+        records = list(fastavro.reader(f))
+
+    if table_name == 'departments':
+        Department.objects.all().delete()
+        serializer = DepartmentSerializer(data=records, many=True)
+    elif table_name == 'jobs':
+        Job.objects.all().delete()
+        serializer = JobSerializer(data=records, many=True)
+    elif table_name == 'hired_employees':
+        HiredEmployee.objects.all().delete()
+        serializer = HiredEmployeeSerializer(data=records, many=True)
+    else:
+        return Response({'error': 'Invalid table name'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'message': f'Table {table_name} restored successfully'}, status=status.HTTP_201_CREATED)
+    else:
+        return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)

@@ -10,7 +10,6 @@ import os
 logging.basicConfig(filename='djangoapp/logs/data_errors.log', level=logging.ERROR)
 
 class Command(BaseCommand):
-    help = 'Load data from CSV files into the database'
 
     def handle(self, *args, **kwargs):
         try:
