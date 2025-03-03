@@ -6,7 +6,6 @@ from djangoapp.models import Department, Job, HiredEmployee
 from .serializers import UserSerializer, DepartmentSerializer, JobSerializer, HiredEmployeeSerializer
 import pandas as pd
 import fastavro
-import os
 
 # Create your views here.
 
@@ -109,7 +108,6 @@ def backup_table(request, table_name):
         return Response({'message': f'No data found in table {table_name}'}, status=status.HTTP_404_NOT_FOUND)
 
     file_path = f'backup/{table_name}_backup.avro'
-    os.makedirs('backups', exist_ok=True)
 
     for col in data.columns:
         print(data[col].dtype) 
