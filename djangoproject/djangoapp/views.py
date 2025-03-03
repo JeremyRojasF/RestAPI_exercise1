@@ -7,6 +7,9 @@ from .serializers import UserSerializer, DepartmentSerializer, JobSerializer, Hi
 import pandas as pd
 import fastavro
 import os
+from django.db.models import Count, Q
+from django.db.models.functions import ExtractQuarter, Cast
+from django.db.models import DateTimeField
 
 # Create your views here.
 
@@ -160,3 +163,24 @@ def restore_table(request, table_name):
         return Response({'message': f'Table {table_name} restored successfully'}, status=status.HTTP_201_CREATED)
     else:
         return Response({'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+@api_view(['GET'])
+def employees_hired_by_quarter(request):
+    employees = (HiredEmployee.objects
+                 .annotate(datetime_cast=Cast('datetime', DateTimeField()))
+                 .filter(datetime_cast__year=2021)
+                 .annotate(quarter=ExtractQuarter('datetime_cast'))
+                 .values('department__department', 'job__job', 'quarter')
+                 .annotate(total=Count('id'))
+                 .order_by('department__department', 'job__job'))
+
+    result = {}
+    for emp in employees:
+        dept = emp['department__department']
+        job = emp['job__job']
+        quarter = f"Q{emp['quarter']}"
+        if (dept, job) not in result:
+            result[(dept, job)] = {'department': dept, 'job': job, 'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0}
+        result[(dept, job)][quarter] = emp['total']
+
+    return Response(list(result.values()), status=status.HTTP_200_OK)
