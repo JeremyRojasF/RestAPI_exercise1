@@ -56,7 +56,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Jobs loaded successfully'))
 
     def load_hired_employees(self):
-        df = pd.read_csv('data/hired_employees.csv', header=None, names=['id', 'name', 'datetime', 'department', 'job'], dtype={'id': pd.Int64Dtype(), 'department': pd.Int64Dtype(), 'job': pd.Int64Dtype()}, parse_dates=['datetime'])
+        df = pd.read_csv('data/hired_employees.csv', header=None, names=['id', 'name', 'datetime', 'department', 'job'], dtype={'id': pd.Int64Dtype(), 'name': pd.StringDtype(), 'datetime': pd.StringDtype(), 'department': pd.Int64Dtype(), 'job': pd.Int64Dtype()})
         for _, row in df.iterrows():
             if row.isnull().any():
                 logging.error(f"Invalid employee data: {row.to_dict()}")

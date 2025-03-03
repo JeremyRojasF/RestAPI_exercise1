@@ -17,6 +17,7 @@ services:
     volumes:
       - .:/app
       - ./data:/app/data
+      - ./backup:/app/backup
   db:
     container_name: db
     image: postgres:13
