@@ -7,7 +7,7 @@ from .serializers import UserSerializer, DepartmentSerializer, JobSerializer, Hi
 import pandas as pd
 import fastavro
 import os
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Avg
 from django.db.models.functions import ExtractQuarter, Cast
 from django.db.models import DateTimeField
 
@@ -184,3 +184,20 @@ def employees_hired_by_quarter(request):
         result[(dept, job)][quarter] = emp['total']
 
     return Response(list(result.values()), status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def departments_above_average(request):
+    avg_hires = (HiredEmployee.objects
+                 .annotate(datetime_cast=Cast('datetime', DateTimeField()))
+                 .filter(datetime_cast__year=2021)
+                 .values('department')
+                 .annotate(total_hired=Count('id'))
+                 .aggregate(average_hired=Avg('total_hired'))['average_hired'])
+
+    departments = (HiredEmployee.objects
+                   .values('department__id', 'department__department')
+                   .annotate(total_hired=Count('id'))
+                   .filter(total_hired__gt=avg_hires)
+                   .order_by('-total_hired'))
+
+    return Response(departments, status=status.HTTP_200_OK)
